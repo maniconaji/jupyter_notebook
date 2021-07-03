@@ -1,0 +1,340 @@
+---
+title: "Laboratorio Visualizaciones"
+author: "Carolina Molinare"
+date: "6/1/2021"
+output: html_document
+---
+
+## Presentación Visualizaciones en R
+
+https://rpubs.com/CarolinaMolinare/710103
+
+## Paquetes y bases
+
+1. Instalar los paquetes necesarios para el laboratorio.
+Esta parte no es necesario hacerla, porque ya están instalados.
+
+```{r Instalar paquetes, eval=F}
+install.packages("data.table") ## Paquete para trabajar datos
+install.packages("dplyr") ## Paquete para trabajar datos
+install.packages("ggplot2") ## Paquete para visualizar
+install.packages("plotly") ## Paquete para visualizar de forma interactiva
+install.packages("treemap") ## Paquete para hacer visualizaciones de treemap
+install.packages("ggalluvial") ## Paquete para hacer visualizaciones de diagrama de flujos
+install.packages("lubridate") ## Paquete para trabajar con fechas
+install.packages("leaflet") ## Paquete para realizar mapas
+```
+
+2. Cargar los paquetes necesarios para el laboratorio.
+
+```{r Cargar paquetes, warning=FALSE, message=FALSE}
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(treemap)
+library(ggalluvial)
+library(leaflet)
+library(lubridate)
+```
+
+3. Cargar bases de datos con las que trabajaremos en el laboratorio.
+
+```{r Limpiar Environment, warning=FALSE, message=FALSE}
+rm(list=ls()) ## Limpiar el Environment
+```
+
+```{r Cargar datos, warning=FALSE, message=FALSE}
+ive<-fread("DATOS_IVE_2018_2020.csv")
+```
+
+```{r}
+class(ive)
+```
+
+
+## Limpieza de datos
+
+1. Seleccionamos algunas variables.
+
+```{r Seleccionar variables}
+ive <- ive %>% 
+  select(-starts_with("PSI"),-starts_with("ASIST"),-starts_with("DUPLA"),-starts_with("VISITA"))
+```
+
+2. Cambiar la clase de las variables de `character` a `integer`.
+
+```{r Modificar variables}
+class(ive$`edad de la mujer`)
+ive$`edad de la mujer`<-as.integer(ive$`edad de la mujer`)
+
+class(ive$`edad gestacional concurrencia`)
+ive$`edad gestacional concurrencia`<-as.integer(ive$`edad gestacional concurrencia`)
+
+class(ive$`mes de concurrencia`)
+ive$`mes de concurrencia`<-as.integer(ive$`mes de concurrencia`)
+
+class(ive$`Año concurrencia`)
+ive$`Año concurrencia`<-as.integer(ive$`Año concurrencia`)
+```
+
+3. Agregaremos información de las causas de interrupción del embarazo de acuerdo a la siguiente tabla:
+
+| causal  | tipo_causa |
+|---------|-------|
+| Causa 1 | Peligro mujer|
+| Causa 2 | Inviabilidad fetal|
+| Causa 3 | Violación|
+
+```{r Creación variable tipo_causa}
+ive[causal=="Causal 1",tipo_causa:="Peligro mujer"]
+ive[causal=="Causal 2",tipo_causa:="Inviabilidad fetal"]
+ive[causal=="Causal 3",tipo_causa:="Violación"]
+```
+
+
+## Paquete `ggplot2`
+
+1. Comando para ejecutar la función ggplot.
+
+```{r Función ggplot, warning=FALSE, message=FALSE}
+ggplot()
+```
+
+2. Crear un sistema de coordenadas.
+
+```{r Creando coordenadas, warning=FALSE, message=FALSE}
+ggplot(data=ive,aes(x=`edad de la mujer`))
+```
+
+## Histograma: Gráfico de distribución
+Se categoriza por un rango de valores dentro de la **variable numérica**
+
+1. Podemos visualizar la distribución de las edades de las mujeres que interrumpen voluntariamente su embarazo.
+
+```{r Histograma de edades, warning=FALSE, message=FALSE}
+ggplot(data=ive,aes(x=`edad de la mujer`)) + geom_histogram()
+```
+
+2. Dado el gráfico anterior, podemos mejorar la visualización considerando solo el año 2018.
+
+```{r Nuevo histograma de edades, warning=FALSE, message=FALSE}
+ggplot(data=ive[`Año concurrencia`==2018],aes(x=`edad de la mujer`)) + geom_histogram()+labs(x="Edad de la mujer [años]", y="N° de mujeres")
+```
+
+3. Utilizamos un bindwidth más pequeño.
+
+```{r Modificación del bindwidth, warning=FALSE, message=FALSE}
+ggplot(data=ive[`Año concurrencia`==2018],aes(x=`edad de la mujer`)) + geom_histogram(bins=100)
+```
+
+## Bar-plot: Gráfico de barras
+Mostrar cuántas observaciones tenemos dentro de una **variable categórica**
+
+1. Iniciar con algo sencillo: ¿cuántas mujeres tienen FONASA, ISAPRE, étc?.
+
+Para realizar lo anterior, primero renombraremos la variable `previsión de salud` por `prevision`.
+```{r Renombrar variable}
+ive<-rename(ive,prevision=`previsión de salud`)
+```
+
+Agruparemos las categorías que son iguales.
+```{r Agrupar variables}
+ive[prevision=="SIN PREVISION",prevision:="NINGUNA"]
+ive[prevision=="SISTEMA PREVISIONAL DE LAS FFAA",prevision:="CAPREDENA"]
+ive[prevision=="Fonasa",prevision:="FONASA"]
+```
+
+Realizaremos el bar-plot.
+```{r Bar-plot de prevision, warning=FALSE, message=FALSE}
+ggplot(ive,aes(x=prevision)) + geom_bar()
+```
+
+2. ¿Cuántos casos por causal hay en cada previsión?.
+
+```{r Bar-plot de prevision por causa, warning=FALSE, message=FALSE}
+ggplot(ive,aes(x=prevision, fill=tipo_causa)) + geom_bar()
+```
+
+3. La información anterior se puede presentar de varias formas. El comando `position` cambia la posición en el gráfico de las barras por la variable dentro del fill, en este caso el `tipo_causa`.
+
+```{r Cambiamos posición 1}
+ggplot(ive,aes(x=prevision, fill=tipo_causa)) + geom_bar(position = "stack")
+```
+
+```{r Cambiamos posición 2}
+ggplot(ive,aes(x=prevision, fill=tipo_causa)) + geom_bar(position = "dodge")
+```
+
+```{r Cambiamos posición 3}
+ggplot(ive,aes(x=prevision, fill=tipo_causa)) + geom_bar(position = "fill")
+```
+
+4. Podemos mostrar la misma información anterior, pero para cada año.
+
+```{r Separamos por año}
+ggplot(ive[prevision!="sin informacion"],aes(x=prevision, fill=tipo_causa)) + geom_bar(position = "dodge") + facet_wrap(facets = "`Año concurrencia`")
+```
+
+5. Agregar etiquetas a los ejes, títulos y subtítulos al gráfico.
+
+```{r Modificamos la estética del gráfico}
+ggplot(ive[prevision!="sin informacion"],aes(x=prevision, fill=tipo_causa)) + geom_bar(position = "dodge") +
+  facet_wrap(facets = "`Año concurrencia`") +
+  labs(x="Previsión", y="Frecuencia", title = "Frecuencia IVE", subtitle = "Por tipo de previsión y causa", caption = "Fuente: Interrupción Voluntaria del Embarazo, MINSAL - Gobierno de Chile" ) +
+  scale_fill_discrete(name="Tipo de Causa") +
+  theme(axis.text.x = element_text(angle=67.5, vjust=1, hjust=1))
+```
+
+## Line-plot: Gráfico de línea
+Muestra la tendencia temporal de una **variable numérica**
+
+1. Podemos visualizar la cantidad de personas atendidas por IVE para el período 2018-2020 que decidieron interrumpir el embarazo.
+
+Para esto tenemos que calcular la cantidad de casos totales en cada año y mes por causa.
+```{r Creamos un nuevo objeto}
+ive1<-ive[`Decisión De la mujer sobre su embarazo`=="INTERRUMPIR EL EMBARAZO",.N,by=.(`Año concurrencia`,`mes de concurrencia`,tipo_causa)]
+```
+
+Luego creamos la variable fecha
+```{r Creamos la variable fecha}
+ive1[,fecha:=as.Date(paste0(`Año concurrencia`,"-",`mes de concurrencia`,"-01"))]
+```
+
+Ahora realizamos el gráfico.
+```{r Gráfico de línea, warning=FALSE,message=FALSE}
+ggplot(ive1, aes(x=fecha, y=N, colour=tipo_causa))+
+  geom_line()+
+  coord_cartesian(xlim = c(min(ive1$fecha),max(ive1$fecha)), ylim = c(0, 50))
+```
+
+2. Agregar etiquetas a los ejes, títulos y subtítulos al gráfico.
+
+```{r Agregar etiquetas, warning=FALSE,message=FALSE}
+ggplot(ive1, aes(x=fecha, y=N, colour=tipo_causa)) + geom_line() +
+  labs(x="Año", y="Frecuencia", title = "Frecuencia IVE", subtitle = "Por año y causa", caption = "Fuente: Interrupción Voluntaria del Embarazo, MINSAL - Gobierno de Chile" )+
+  scale_color_discrete(name="Tipo de Causa")
+```
+
+3. Ahora podemos ocupar `plotly` en nuestro gráfico de línea.
+
+Para esto tenemos que crear un objeto con nuestro gráfico anterior.
+```{r Creamos un objeto para el gráfico}
+line<-ggplot(ive1, aes(x=fecha, y=N, colour=tipo_causa)) + geom_line() +
+  labs(x="Año", y="Frecuencia", title = "Frecuencia IVE", subtitle = "Por año y causa", caption = "Fuente: Interrupción Voluntaria del Embarazo, MINSAL - Gobierno de Chile" )+
+  scale_color_discrete(name="Tipo de Causa")+
+  coord_cartesian(xlim = c(min(ive1$fecha),max(ive1$fecha)), ylim = c(0, 40))
+  
+```
+
+Aplicamos la función `ggplotly`.
+```{r Función ggplotly , warning=FALSE, message=FALSE}
+ggplotly(line)
+```
+
+## Scatter-plot: Gráfico de puntos
+Muestra el valor de dos **variables numéricas o una numérica y otra categórica** en un gráfico de dos dimensiones
+
+1. Podemos ver la relación que existe entre la edad de la mujer y la edad gestacional de concurrencia (semanas de embarazo).
+
+```{r Scatter-plot, warning=FALSE,message=FALSE}
+ggplot(ive, aes(`edad gestacional concurrencia`, `edad de la mujer`)) + geom_point()
+```
+
+2. Podemos ver la misma relación, pero diferenciando por el tipo de causa.
+
+```{r Scatter-plot por tipo de causa, warning=FALSE,message=FALSE}
+ggplot(ive, aes(`edad de la mujer`,`edad gestacional concurrencia`, color=`Decisión De la mujer sobre su embarazo`
+)) + geom_point() + facet_wrap(facets = "tipo_causa")
+```
+
+3. Podemos ver la misma relación, pero diferenciando por el tipo de causa ¿y Año de ocurrencia?.
+
+```{r Scatter-plot por tipo de causa y año}
+ggplot(ive, aes(`edad de la mujer`,`edad gestacional concurrencia`, color=`Decisión De la mujer sobre su embarazo`)) + geom_point() + facet_grid(vars(`Año concurrencia`),vars(`tipo_causa`))+
+  theme(legend.position="bottom")
+```
+
+## Diagrama de flujos
+Muestra como se relacionan **dos variables categóricas** dado un “flujo”
+
+1. ¿En qué región se atienden las mujeres y de qué región provienen?.
+
+Para responder esta pregunta, necesitamos cargar la base de establecimientos, que contiene la información de los centros de salud.
+```{r Cargar nuevos datos}
+establecimientos<-fread("Establecimientos.csv")
+```
+
+Unimos los nuevos datos a la base IVE.
+```{r Unir bases de datos}
+ive<-merge(ive,establecimientos,by="establecimiento")
+```
+
+Ahora hay que identificar la cantidad de mujeres que se atienden según su región, la región del establecimiento donde se atienden y el año de concurrencia.
+```{r Crear un nuevo objeto}
+Movimientos<-ive[,.N, by=.(`Región de residencia de la mujer`,idregion,`Año concurrencia`)]
+```
+
+Tenemos lista toda la información para nuestro gráfico.
+```{r Diagrama de flujo}
+ggplot(Movimientos, aes( x=`Año concurrencia`, y=N, alluvium =`Región de residencia de la mujer`, fill =`Región de residencia de la mujer`, colour = `Región de residencia de la mujer`)) + 
+  geom_alluvium(alpha = .5, decreasing = FALSE) +
+  scale_x_continuous(breaks = seq(2018, 2020, 1)) +
+  facet_wrap(facets = "idregion")+
+  theme(legend.text = element_text(size = 4))
+```
+
+## Treemaps:
+
+1. Podemos observar de qué región provienen la mayor cantidad de mujeres.
+
+```{r Treemaps}
+treemap(ive, index="Región de residencia de la mujer", vSize = "id", type="value", title="Cantidad de personas por comuna")
+```
+
+## Visualización espacial: mapas
+
+1. Podemos ubicar geográficamente los centros de salud.
+
+Para esto es importante que las variables de latitud y longitud sean numéricas
+```{r Transofrmar a numéricas}
+ive$lat<-as.numeric(ive$lat)
+ive$lng<-as.numeric(ive$lng)
+```
+
+Ahora realizamos el mapa
+```{r Mapa, warning=FALSE, message=FALSE}
+leaflet(ive)%>%
+  addTiles()%>%
+  addMarkers() 
+```
+
+Seteamos la vista
+```{r Mapa seteado, warning=FALSE, message=FALSE}
+leaflet(ive)%>%
+  addTiles()%>%
+  setView(lng = -71.5, lat = -33, zoom = 11)%>%
+  addMarkers()
+```
+
+2. Podemos agregar información a cada marcador.
+
+Algo relevante que se puede agregar a los marcadores es las atenciones totales que realizan los centros de salud según la causal de ingreso
+```{r Información para el marcador}
+ive2<-ive[,.N,by=.(establecimiento,tipo_causa)]
+```
+
+Luego creamos el texto que va a ir en cada marcador
+```{r Texto del marcador, warning=FALSE, message=FALSE}
+mytext<-paste("Nombre establecimiento:",ive$establecimiento,"<br/>","Tipo de establecimiento: ", ive$tipoest,"<br/>", "Atenciones Peligro madre: ", ive2[tipo_causa=="Peligro mujer"]$N,"<br/>", "Atenciones Inviabilidad fetal: ", ive2[tipo_causa=="Inviabilidad fetal"]$N,"<br/>", "Atenciones Violación: ", ive2[tipo_causa=="Violación"]$N,sep="")
+```
+
+Finalmente incorporamos el texto en el mapa
+```{r Mapa final, warning=FALSE, message=FALSE}
+leaflet(ive)%>%
+  addTiles()%>%
+  setView(lng = -71.5, lat = -33, zoom = 11)%>%
+  addMarkers(popup=mytext)
+```
+
+
