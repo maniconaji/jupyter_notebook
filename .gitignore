@@ -1,0 +1,7 @@
+*.pyc
+*.R
+.ipynb_checkpoints
+Data
+Output
+Script
+*.png
