@@ -1,8 +1,4 @@
-# Manejo de  datos
-import pandas as pd                          # Manipular DataFrames y DataArrays
-import numpy as np                           # Manipular array y otros algoritmos matematicos
-from glob import glob                        # Encontrar ruta (path) de cada archivo
-from functools import reduce
+
 from datetime import datetime
 
 def lectura_csv(path):
