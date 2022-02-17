@@ -1,0 +1,5 @@
+id, nombre estación, UTM_E, UTM_N, Huso
+244, Estación San Fernando, 317503, 6171746, 19
+212, Estación Rengo, 329665, 6192542, 19
+250, Estación Rancagua I, 339842, 6220527, 19
+220, Estación Rancagua II, 339842, 6220527, 19
